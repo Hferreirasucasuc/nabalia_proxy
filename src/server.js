@@ -10,6 +10,9 @@ const soapRoutes = require('./routes/soap');
 
 const app = express();
 
+// Azure App Service (and most cloud providers) run behind a reverse proxy
+app.set('trust proxy', 1);
+
 // ─── Security headers ────────────────────────────────────────────────────────
 app.use(helmet());
 
