@@ -25,5 +25,6 @@ module.exports = {
 
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:8080')
     .split(',')
-    .map(s => s.trim()),
+    .map(s => s.trim())
+    .filter(s => s.length > 0),
 };

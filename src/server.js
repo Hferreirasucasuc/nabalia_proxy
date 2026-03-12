@@ -15,7 +15,15 @@ app.use(helmet());
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: config.corsOrigins,
+  origin: (origin, cb) => {
+    // Allow requests with no origin (e.g. curl, mobile apps)
+    if (!origin) return cb(null, true);
+    // Always allow localhost (any port) for dev
+    if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+    // Check against configured origins
+    if (config.corsOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed'));
+  },
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization', 'SOAPAction'],
 }));
