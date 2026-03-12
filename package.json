@@ -1,0 +1,20 @@
+{
+  "name": "nabalia-bc14-proxy",
+  "version": "1.0.0",
+  "description": "Secure proxy between Nabalia Agent App and Business Central 14 SOAP services",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "morgan": "^1.10.0"
+  }
+}
