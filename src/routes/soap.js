@@ -11,7 +11,6 @@ const router = Router();
 const AGENT_FILTERED_PAGES = new Set([
   'WSContractlist',
   'WSPriceRequestHeaderList',
-  'WSPriceRequestLineInfoAgent',
   'WSUtilitiesAdhesions',
   'WSAgentFeeDefaultList',
   'WSInvoiceSimHeader',
