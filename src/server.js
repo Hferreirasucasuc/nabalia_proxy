@@ -53,7 +53,7 @@ app.use(morgan('short'));
 // JSON for auth routes
 app.use('/api/auth', express.json());
 // Raw text for SOAP proxy routes (preserves SOAP XML as-is)
-app.use('/api/soap', express.text({ type: ['text/xml', 'application/xml', 'text/plain'], limit: '1mb' }));
+app.use('/api/soap', express.text({ type: ['text/xml', 'application/xml', 'text/plain'], limit: '10mb' }));
 
 // ─── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {

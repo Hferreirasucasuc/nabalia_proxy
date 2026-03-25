@@ -23,7 +23,9 @@ async function soapForward(path, soapAction, body) {
     responseType: 'text',
     // Don't throw on 500 — BC14 returns SOAP faults with HTTP 500
     validateStatus: (status) => status < 600,
-    timeout: 30000,
+    timeout: 120000,
+    maxContentLength: 10 * 1024 * 1024,  // 10MB
+    maxBodyLength: 10 * 1024 * 1024,     // 10MB
   });
 
   return { status: response.status, data: response.data };
