@@ -17,6 +17,15 @@ const AGENT_FILTERED_PAGES = new Set([
 ]);
 
 /**
+ * Pages that are filtered by ContractNo — we verify the contract belongs
+ * to the logged-in agent before allowing the request.
+ */
+const CONTRACT_CHILD_PAGES = new Set([
+  'AttachedPortalDocuments',
+  'pConsumptionbyAgentPortal',
+]);
+
+/**
  * Injects or overrides the Agent_No filter in a ReadMultiple SOAP envelope.
  * If an Agent_No filter already exists, it is replaced with the correct value.
  * If none exists, one is added before the closing </ReadMultiple> tag.
@@ -41,6 +50,40 @@ function enforceAgentFilter(soapBody, agentId) {
   );
 
   return cleaned;
+}
+
+/**
+ * Extracts the ContractNo (or similar field) from a SOAP ReadMultiple body.
+ * Looks for <Criteria>VALUE</Criteria> inside a filter with <Field>ContractNo</Field>.
+ */
+function extractContractNoFromBody(soapBody) {
+  const match = soapBody.match(
+    /<filter>\s*<Field>ContractNo<\/Field>\s*<Criteria>([^<]*)<\/Criteria>\s*<\/filter>/i
+  );
+  return match ? match[1] : null;
+}
+
+/**
+ * Verifies that a contract belongs to the given agent by calling
+ * WSContractlist Read and checking the Agent_No field.
+ */
+async function verifyContractOwnership(contractNo, agentId) {
+  const soapAction = 'urn:microsoft-dynamics-schemas/page/wscontractlist:Read';
+  const envelope =
+    `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"` +
+    ` xmlns:tns="urn:microsoft-dynamics-schemas/page/wscontractlist">` +
+    `<soap:Body><tns:Read><tns:No>${escapeXml(contractNo)}</tns:No></tns:Read></soap:Body>` +
+    `</soap:Envelope>`;
+
+  const result = await soapForward('/Page/WSContractlist', soapAction, envelope);
+  if (result.status !== 200) return false;
+
+  // Extract Agent_No from response
+  const agentMatch = result.data.match(/<Agent_No>([^<]*)<\/Agent_No>/i);
+  if (!agentMatch) return false;
+
+  return agentMatch[1] === agentId;
 }
 
 function escapeXml(s) {
@@ -99,6 +142,50 @@ router.post('/:type/:name', async (req, res) => {
     req.agent?.agentId
   ) {
     soapBody = enforceAgentFilter(soapBody, req.agent.agentId);
+  }
+
+  // ── Security: verify contract ownership for contract-child pages ────
+  if (
+    type === 'Page' &&
+    CONTRACT_CHILD_PAGES.has(name) &&
+    soapBody.includes('ReadMultiple') &&
+    req.agent?.agentId
+  ) {
+    const contractNo = extractContractNoFromBody(soapBody);
+    if (contractNo) {
+      try {
+        const owns = await verifyContractOwnership(contractNo, req.agent.agentId);
+        if (!owns) {
+          return res.status(403).json({ error: 'Acesso negado: contrato não pertence ao agente.' });
+        }
+      } catch (err) {
+        console.error('[SOAP] Contract ownership check failed:', err.message);
+        return res.status(502).json({ error: 'Erro ao verificar propriedade do contrato.' });
+      }
+    }
+  }
+
+  // ── Security: verify contract Read belongs to agent ─────────────────
+  if (
+    type === 'Page' &&
+    name === 'WSContractlist' &&
+    !soapBody.includes('ReadMultiple') &&
+    soapBody.includes('<Read') &&
+    req.agent?.agentId
+  ) {
+    // Extract contract No from Read request: <No>VALUE</No>
+    const noMatch = soapBody.match(/<No>([^<]*)<\/No>/i);
+    if (noMatch) {
+      try {
+        const owns = await verifyContractOwnership(noMatch[1], req.agent.agentId);
+        if (!owns) {
+          return res.status(403).json({ error: 'Acesso negado: contrato não pertence ao agente.' });
+        }
+      } catch (err) {
+        console.error('[SOAP] Contract Read ownership check failed:', err.message);
+        return res.status(502).json({ error: 'Erro ao verificar propriedade do contrato.' });
+      }
+    }
   }
 
   const path = `/${type}/${name}`;
