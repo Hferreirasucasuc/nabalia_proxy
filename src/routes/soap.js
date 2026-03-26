@@ -23,6 +23,7 @@ const AGENT_FILTERED_PAGES = new Set([
 const CONTRACT_CHILD_PAGES = new Set([
   'AttachedPortalDocuments',
   'pConsumptionbyAgentPortal',
+  'WSCustomerInvoices',
 ]);
 
 /**
@@ -57,8 +58,9 @@ function enforceAgentFilter(soapBody, agentId) {
  * Looks for <Criteria>VALUE</Criteria> inside a filter with <Field>ContractNo</Field>.
  */
 function extractContractNoFromBody(soapBody) {
+  // Match ContractNo or Utilities_Contract_No filter fields
   const match = soapBody.match(
-    /<filter>\s*<Field>ContractNo<\/Field>\s*<Criteria>([^<]*)<\/Criteria>\s*<\/filter>/i
+    /<filter>\s*<Field>(?:ContractNo|Utilities_Contract_No)<\/Field>\s*<Criteria>([^<]*)<\/Criteria>\s*<\/filter>/i
   );
   return match ? match[1] : null;
 }
