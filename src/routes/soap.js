@@ -14,6 +14,7 @@ const AGENT_FILTERED_PAGES = new Set([
   'WSUtilitiesAdhesions',
   'WSAgentFeeDefaultList',
   'WSInvoiceSimHeader',
+  'WSContractstoRenew',
 ]);
 
 /**
