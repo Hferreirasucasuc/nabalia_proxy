@@ -40,8 +40,19 @@ router.post('/login', async (req, res) => {
     // Extract agent name for the JWT payload
     const agentName = extractTag(result.data, 'agentName') || '';
 
-    // Sign JWT with agent info
-    const token = signToken({ agentId, agentName });
+    // Fetch agent hierarchy — all agent IDs this agent can see
+    let visibleAgents = [agentId]; // Default: only self
+    try {
+      const hierarchyResult = await fetchAgentHierarchy(agentId);
+      if (hierarchyResult && hierarchyResult.length > 0) {
+        visibleAgents = hierarchyResult;
+      }
+    } catch (err) {
+      console.error('[AUTH] Failed to fetch agent hierarchy, using self only:', err.message);
+    }
+
+    // Sign JWT with agent info + visible agents list
+    const token = signToken({ agentId, agentName, visibleAgents });
 
     // Return the raw SOAP result XML + token
     // The Flutter app will parse the XML as before
@@ -84,6 +95,31 @@ router.post('/forgot-password', async (req, res) => {
     res.status(502).json({ error: 'Erro ao comunicar com BC14.' });
   }
 });
+
+// ─── Agent Hierarchy ─────────────────────────────────────────────────────────
+
+/**
+ * Calls BC14 AgentsPortalFunctions.FxGetAgentHierarchy to get
+ * all agent IDs visible to the given agent (pipe-separated).
+ * Returns an array of agent IDs, e.g. ['AG001', 'SUB001', 'SUB002'].
+ */
+async function fetchAgentHierarchy(agentId) {
+  const ns = 'urn:microsoft-dynamics-schemas/codeunit/AgentsPortalFunctions';
+  const soapAction = `"${ns}:FxGetAgentHierarchy"`;
+  const body = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <FxGetAgentHierarchy xmlns="${ns}">
+      <pAgentNo>${escapeXml(agentId)}</pAgentNo>
+    </FxGetAgentHierarchy>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const result = await soapForward('/Codeunit/AgentsPortalFunctions', soapAction, body);
+  const returnValue = extractTag(result.data, 'return_value') || '';
+  if (!returnValue) return [agentId];
+  return returnValue.split('|').filter(id => id.length > 0);
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

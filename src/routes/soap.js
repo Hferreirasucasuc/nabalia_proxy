@@ -70,7 +70,7 @@ function extractContractNoFromBody(soapBody) {
  * Verifies that a contract belongs to the given agent by calling
  * WSContractlist Read and checking the Agent_No field.
  */
-async function verifyContractOwnership(contractNo, agentId) {
+async function verifyContractOwnership(contractNo, visibleAgents) {
   const soapAction = 'urn:microsoft-dynamics-schemas/page/wscontractlist:Read';
   const envelope =
     `<?xml version="1.0" encoding="utf-8"?>` +
@@ -86,7 +86,8 @@ async function verifyContractOwnership(contractNo, agentId) {
   const agentMatch = result.data.match(/<Agent_No>([^<]*)<\/Agent_No>/i);
   if (!agentMatch) return false;
 
-  return agentMatch[1] === agentId;
+  // Check if the contract's agent is in the visible agents list
+  return visibleAgents.includes(agentMatch[1]);
 }
 
 function escapeXml(s) {
@@ -144,7 +145,10 @@ router.post('/:type/:name', async (req, res) => {
     soapBody.includes('ReadMultiple') &&
     req.agent?.agentId
   ) {
-    soapBody = enforceAgentFilter(soapBody, req.agent.agentId);
+    // Use hierarchy-aware filter: visibleAgents from JWT, or fallback to single agentId
+    const agents = req.agent.visibleAgents || [req.agent.agentId];
+    const agentCriteria = agents.join('|');
+    soapBody = enforceAgentFilter(soapBody, agentCriteria);
   }
 
   // ── Security: verify contract ownership for contract-child pages ────
@@ -155,9 +159,10 @@ router.post('/:type/:name', async (req, res) => {
     req.agent?.agentId
   ) {
     const contractNo = extractContractNoFromBody(soapBody);
+    const visible = req.agent.visibleAgents || [req.agent.agentId];
     if (contractNo) {
       try {
-        const owns = await verifyContractOwnership(contractNo, req.agent.agentId);
+        const owns = await verifyContractOwnership(contractNo, visible);
         if (!owns) {
           return res.status(403).json({ error: 'Acesso negado: contrato não pertence ao agente.' });
         }
@@ -176,11 +181,12 @@ router.post('/:type/:name', async (req, res) => {
     soapBody.includes('<Read') &&
     req.agent?.agentId
   ) {
+    const visible = req.agent.visibleAgents || [req.agent.agentId];
     // Extract contract No from Read request: <No>VALUE</No>
     const noMatch = soapBody.match(/<No>([^<]*)<\/No>/i);
     if (noMatch) {
       try {
-        const owns = await verifyContractOwnership(noMatch[1], req.agent.agentId);
+        const owns = await verifyContractOwnership(noMatch[1], visible);
         if (!owns) {
           return res.status(403).json({ error: 'Acesso negado: contrato não pertence ao agente.' });
         }
