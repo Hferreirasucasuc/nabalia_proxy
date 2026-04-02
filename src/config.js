@@ -5,8 +5,8 @@ module.exports = {
 
   bc14: {
     host: process.env.BC14_HOST || 'localhost',
-    port: parseInt(process.env.BC14_PORT || '9047', 10),
-    instance: process.env.BC14_INSTANCE || 'BC140Test',
+    port: parseInt(process.env.BC14_PORT || '7047', 10),
+    instance: process.env.BC14_INSTANCE || 'BC140',
     company: process.env.BC14_COMPANY || 'PropensaAlternativa',
     user: process.env.BC14_USER,
     pass: process.env.BC14_PASS,
