@@ -9,7 +9,7 @@ const router = Router();
  * injected (or overridden) to match the authenticated agent's ID.
  */
 const AGENT_FILTERED_PAGES = new Set([
-  'WSContractlist',
+  'WSContractList',
   'WSPriceRequestHeaderList',
   'WSUtilitiesAdhesions',
   'WSAgentFeeDefaultList',
@@ -79,7 +79,7 @@ async function verifyContractOwnership(contractNo, visibleAgents) {
     `<soap:Body><tns:Read><tns:No>${escapeXml(contractNo)}</tns:No></tns:Read></soap:Body>` +
     `</soap:Envelope>`;
 
-  const result = await soapForward('/Page/WSContractlist', soapAction, envelope);
+  const result = await soapForward('/Page/WSContractList', soapAction, envelope);
   if (result.status !== 200) return false;
 
   // Extract Agent_No from response
@@ -176,7 +176,7 @@ router.post('/:type/:name', async (req, res) => {
   // ── Security: verify contract Read belongs to agent ─────────────────
   if (
     type === 'Page' &&
-    name === 'WSContractlist' &&
+    name === 'WSContractList' &&
     !soapBody.includes('ReadMultiple') &&
     soapBody.includes('<Read') &&
     req.agent?.agentId
